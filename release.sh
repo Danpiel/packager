@@ -1664,6 +1664,7 @@ if [ -z "$skip_zipfile" ]; then
 				  -F "id=$addonid" \
 				  -F "version=$archive_version" \
 				  -F "compatible=$game_version" \
+				  -F "changelog=<$pkgdir/$changelog" \
 				  -F "updatefile=@$archive" \
 				  "http://api.wowinterface.com/addons/update" )
 
