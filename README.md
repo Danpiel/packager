@@ -20,6 +20,11 @@ __release.sh__ reads __.pkgmeta__ and supports the following directives. See the
   - *move-folders*
   - *package-as*
 
+You can also use a few directives for WoWInterface uploading.
+
+  - *wowi-archive-previous* : `yes|no` (defaults to yes) Archive the previous release.
+  - *wowi-create-changelog* : `yes|no` (defaults to yes) Generate a Git changelog using BBCode that will be set when uploading. A manual changelog will always be used if set in the .pkgmeta.
+
 __release.sh__ supports the following repository substitution keywords when
 copying the files from the checkout into the project directory. See the [CurseForge Knowledge base page](http://legacy.curseforge.com/wiki/repositories/repository-keyword-substitutions/) for more info.
 
@@ -100,3 +105,5 @@ The following environment variables are necessary for uploading:
   - `GITHUB_OAUTH` - a [GitHub OAuth token](https://github.com/settings/tokens), required for uploading to Github
   - `WOWI_USERNAME` - your WoWInterface username, required for uploading to WoWInterface
   - `WOWI_PASSWORD` - your WoWInterface password, required for uploading to WoWInterface
+
+These variables will be read from the `auth.env` file in the same directory as `release.sh` if it exists.
