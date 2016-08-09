@@ -1779,7 +1779,7 @@ if [ -z "$skip_zipfile" ]; then
 		resultfile="$releasedir/wi_result.json"
 		result=$( curl -s \
 			  -w "%{http_code}" -o "$resultfile" \
-			  -H "X-API-Key: $wowi_token" \
+			  -H "X-API-Token: $wowi_token" \
 			  -F "id=$addonid" \
 			  -F "version=$archive_version" \
 			  -F "compatible=$game_version" \
@@ -1795,12 +1795,12 @@ if [ -z "$skip_zipfile" ]; then
 			;;
 		*)
 			echo "Error! ($result)"
-			echo "$(<"$resultfile")"
+			#echo "$(<"$resultfile")"
 			exit_code=1
 			;;
 		esac
 
-		rm "$resultfile" 2>/dev/null
+		#rm "$resultfile" 2>/dev/null
 	fi
 
 	# Create a GitHub Release for tags and upload the zipfile as an asset.
