@@ -1765,16 +1765,20 @@ if [ -z "$skip_zipfile" ]; then
 			  "https://api.wowinterface.com/addons/update" )
 
 		case $result in
-		200)
+		200|202)
 			echo "Success!"
 			rm "$wowi_changelog" 2>/dev/null
 			;;
+		401) echo "Error! No project for \`\`$slug'' found or you do not have permission to upload files." ;;
+		403) echo "Error! Incorrect api key or you do not have permission to upload files." ;;
 		*)
 			echo "Error! ($result)"
-			#echo "$(<"$resultfile")"
-			exit_code=1
+			echo "$(<"$resultfile")"
 			;;
 		esac
+		if [ "$result" -ne "200" ]; then
+			exit_code=1
+		fi
 
 		#rm "$resultfile" 2>/dev/null
 	fi
