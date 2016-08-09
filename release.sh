@@ -1769,7 +1769,7 @@ if [ -z "$skip_zipfile" ]; then
 			echo "Success!"
 			rm "$wowi_changelog" 2>/dev/null
 			;;
-		401) echo "Error! No project for \`\`$slug'' found or you do not have permission to upload files." ;;
+		401) echo "Error! No addon for id \`\`$addonid'' found or you do not have permission to upload files." ;;
 		403) echo "Error! Incorrect api key or you do not have permission to upload files." ;;
 		*)
 			echo "Error! ($result)"
@@ -1780,7 +1780,7 @@ if [ -z "$skip_zipfile" ]; then
 			exit_code=1
 		fi
 
-		#rm "$resultfile" 2>/dev/null
+		rm "$resultfile" 2>/dev/null
 	fi
 
 	# Create a GitHub Release for tags and upload the zipfile as an asset.
