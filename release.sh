@@ -39,16 +39,15 @@ if [ -n "$TRAVIS" ]; then
 		echo "Not packaging \`\`${TRAVIS_BRANCH}''."
 		exit 0
 	fi
-	# remove tags created after the commit to prevent incorrect versions
-	# caused by the delay in starting the build
+	# don't need to run the packager if there is a tag pending (or already built)
 	if [ -z "$TRAVIS_TAG" ]; then
 		TRAVIS_COMMIT_TIMESTAMP=$( git -C "$TRAVIS_BUILD_DIR" show --no-patch --format='%at' $TRAVIS_COMMIT)
-	  for tag in $(git -C "$TRAVIS_BUILD_DIR" for-each-ref --sort=-taggerdate --count=3 --format '%(refname:short)' refs/tags); do
-	    if [[ $( git -C "$TRAVIS_BUILD_DIR" cat-file -p "$tag" | awk '/^tagger/ {print $(NF-1); exit}' ) > $TRAVIS_COMMIT_TIMESTAMP ]]; then
-	      echo -n "Found future tag: "
-	      git -C "$TRAVIS_BUILD_DIR" tag -d "$tag"
-	    fi
-	  done
+		for tag in $(git -C "$TRAVIS_BUILD_DIR" for-each-ref --sort=-taggerdate --count=3 --format '%(refname:short)' refs/tags); do
+			if [[ $( git -C "$TRAVIS_BUILD_DIR" cat-file -p "$tag" | awk '/^tagger/ {print $(NF-1); exit}' ) > $TRAVIS_COMMIT_TIMESTAMP ]]; then
+				echo "Found future tag '$tag', not packaging."
+				exit 0
+			fi
+		done
 	fi
 fi
 
@@ -1758,26 +1757,26 @@ if [ -z "$skip_zipfile" ]; then
 
 	# Upload tags to WoWInterface.
 	if [ -n "$upload_wowinterface" ]; then
+		_wowi_args=()
 		if [ -f "$wowi_changelog" ]; then
-			_wowi_changelog="-F changelog=<$wowi_changelog"
+			_wowi_args+=("-F changelog=<$wowi_changelog")
 		elif [ -n "$manual_changelog" ]; then
-			_wowi_changelog="-F changelog=<$pkgdir/$changelog"
+			_wowi_args+=("-F changelog=<$pkgdir/$changelog")
 		fi
 		if [ -z "$wowi_archive" ]; then
-			_wowi_archive="-F archive=No"
+			_wowi_args+=("-F archive=No")
 		fi
 
 		upload_to_wowinterface() {
 			echo "Uploading $archive_name ($game_version) to http://www.wowinterface.com/downloads/info$addonid"
 			resultfile="$releasedir/wi_result.json"
-			result=$( IFS=''; curl -s \
+			result=$( curl -s \
 				  -w "%{http_code}" -o "$resultfile" \
 				  -H "x-api-token: $wowi_token" \
 				  -F "id=$addonid" \
 				  -F "version=$archive_version" \
 				  -F "compatible=$game_version" \
-				  $_wowi_changelog \
-				  $_wowi_archive \
+				  "${_wowi_args[@]}" \
 				  -F "updatefile=@$archive" \
 				  "https://api.wowinterface.com/addons/update" )
 			status=$?
