@@ -590,7 +590,7 @@ fi
 
 # Add untracked/ignored files to the ignore list
 if [ "$repository_type" = "git" ]; then
-	_vcs_ignore=$( git -C "$topdir" ls-files --others | sed -e ':a;N;s/\n/:/;ta' )
+	_vcs_ignore=$( git -C "$topdir" ls-files --others | sed -e ':a' -e 'N' -e 's/\n/:/' -e 'ta' )
 	if [ -n "$_vcs_ignore" ]; then
 		if [ -z "$ignore" ]; then
 			ignore="$_vcs_ignore"
@@ -1448,7 +1448,7 @@ if [ ! -f "$topdir/$changelog" -a ! -f "$topdir/CHANGELOG.txt" -a ! -f "$topdir/
 		fi
 		changelog_date=$( date -ud "@$project_timestamp" +%Y-%m-%d )
 
-		cat <<- EOF > "$pkgdir/$changelog"
+		cat <<- EOF | line_ending_filter > "$pkgdir/$changelog"
 		# $project
 
 		## $changelog_version ($changelog_date) [](#top)
@@ -1456,14 +1456,17 @@ if [ ! -f "$topdir/$changelog" -a ! -f "$topdir/CHANGELOG.txt" -a ! -f "$topdir/
 
 		EOF
 		git -C "$topdir" log $git_commit_range --pretty=format:"###   %B" \
-			| sed -e 's/^/    /g' -e 's/^ *$//g' -e 's/^    ###/-/g' -e 's/\[ci skip\]//g' -e 's/git-svn-id:.*//g' -e '/^\s*$/d' \
+			| sed -e 's/^/    /g' -e 's/^ *$//g' -e 's/^    ###/-/g' -e 's/$/  /' \
+			      -e 's/\[ci skip\]//g' -e 's/\[skip ci\]//g' \
+			      -e '/git-svn-id:/d' -e '/^\s*This reverts commit [0-9a-f]\{40\}\.\s*$/d' \
+			      -e '/^\s*$/d' \
 			| line_ending_filter >> "$pkgdir/$changelog"
 
 		# WoWI uses BBCode, generate something usable to post to the site
 		# the file is deleted on successful upload
 		if [ -n "$addonid" -a -n "$tag" -a -n "$wowi_gen_changelog" ]; then
 			wowi_changelog="$releasedir/WOWI-$project_version-CHANGELOG.txt"
-			cat <<- EOF > "$wowi_changelog"
+			cat <<- EOF | line_ending_filter > "$wowi_changelog"
 			[size=5]$project[/size]
 			[size=4]$changelog_version_wowi ($changelog_date)[/size]
 			$changelog_url_wowi
@@ -1471,7 +1474,10 @@ if [ ! -f "$topdir/$changelog" -a ! -f "$topdir/CHANGELOG.txt" -a ! -f "$topdir/
 			[list]
 			EOF
 			git -C "$topdir" log $git_commit_range --pretty=format:"###   %B" \
-				| sed -e 's/^/    /g' -e 's/^ *$//g' -e 's/^    ###/[*]/g' -e 's/\[ci skip\]//g' -e 's/git-svn-id:.*//g' -e '/^\s*$/d' \
+				| sed -e 's/^/    /g' -e 's/^ *$//g' -e 's/^    ###/[*]/g' \
+				      -e 's/\[ci skip\]//g' -e 's/\[skip ci\]//g' \
+				      -e '/git-svn-id:/d' -e '/^\s*This reverts commit [0-9a-f]\{40\}\.\s*$/d' \
+				      -e '/^\s*$/d' \
 				| line_ending_filter >> "$wowi_changelog"
 			echo "[/list]" | line_ending_filter >> "$wowi_changelog"
 
@@ -1484,7 +1490,7 @@ if [ ! -f "$topdir/$changelog" -a ! -f "$topdir/CHANGELOG.txt" -a ! -f "$topdir/
 		fi
 		changelog_date=$( date -ud "@$project_timestamp" +%Y-%m-%d )
 
-		cat <<- EOF > "$pkgdir/$changelog"
+		cat <<- EOF | line_ending_filter > "$pkgdir/$changelog"
 		# $project
 
 		## $project_version ($changelog_date)
@@ -1492,7 +1498,7 @@ if [ ! -f "$topdir/$changelog" -a ! -f "$topdir/CHANGELOG.txt" -a ! -f "$topdir/
 		EOF
 		svn log "$topdir" $svn_revision_range --xml \
 			| awk '/<msg>/,/<\/msg>/' \
-			| sed -e 's/<msg>/###   /g' -e 's/<\/msg>//g' -e 's/^/    /g' -e 's/^ *$//g' -e 's/^    ###/-/g' -e 's/\[ci skip\]//g' -e '/^\s*$/d' \
+			| sed -e 's/<msg>/###   /g' -e 's/<\/msg>//g' -e 's/^/    /g' -e 's/^ *$//g' -e 's/^    ###/-/g' -e 's/\[ci skip\]//g' -e 's/\[skip ci\]//g' -e '/^\s*$/d' \
 			| line_ending_filter >> "$pkgdir/$changelog"
 
 	fi
@@ -1737,19 +1743,19 @@ if [ -z "$skip_zipfile" ]; then
 
 			rm "$resultfile" 2>/dev/null
 
-			return $result
+			return $status
 		}
 
 		upload_to_curseforge
-		result=$?
+		ul_result=$?
 		for i in {1..3}; do
-			[ "$result" -eq "201" ] && break
+			[ $ul_result -eq 0 ] && break
 			echo "Retrying in 3 seconds... "
 			sleep 3
 			upload_to_curseforge
-			result=$?
+			ul_result=$?
 		done
-		if [ "$result" -ne "201" ]; then
+		if [ $ul_result -ne 0 ]; then
 			exit_code=1
 		fi
 		echo
@@ -1801,19 +1807,19 @@ if [ -z "$skip_zipfile" ]; then
 
 			rm "$resultfile" 2>/dev/null
 
-			return $result
+			return $status
 		}
 
 		upload_to_wowinterface
-		result=$?
+		ul_result=$?
 		for i in {1..3}; do
-			[ "$result" -eq "202" ] && break
+			[ $ul_result -eq 0 ] && break
 			echo "Retrying in 3 seconds... "
 			sleep 3
 			upload_to_wowinterface
-			result=$?
+			ul_result=$?
 		done
-		if [ "$result" -ne "202" ]; then
+		if [ $ul_result -ne 0 ]; then
 			exit_code=1
 		fi
 		echo
@@ -1859,7 +1865,7 @@ if [ -z "$skip_zipfile" ]; then
 
 			rm "$_ghf_resultfile" 2>/dev/null
 
-			return $result
+			return $status
 		}
 
 		upload_to_github() {
@@ -1883,7 +1889,6 @@ if [ -z "$skip_zipfile" ]; then
 			if [ $status -ne 0 ]; then
 				result=$status
 			fi
-
 			if [ "$result" -eq "201" ]; then
 				release_id=$( cat "$resultfile" | jq '.id' )
 				upload_github_asset $release_id "$archive"
@@ -1901,19 +1906,19 @@ if [ -z "$skip_zipfile" ]; then
 
 			rm "$resultfile" 2>/dev/null
 
-			return $result
+			return $status
 		}
 
 		upload_to_github
-		result=$?
+		ul_result=$?
 		for i in {1..3}; do
-			[ "$result" -eq "201" ] && break
+			[ $ul_result -eq 0 ] && break
 			echo "Retrying in 3 seconds... "
 			sleep 3
 			upload_to_github
-			result=$?
+			ul_result=$?
 		done
-		if [ "$result" -ne "201" ]; then
+		if [ $ul_result -ne 0 ]; then
 			exit_code=1
 		fi
 		echo
